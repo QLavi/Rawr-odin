@@ -7,12 +7,14 @@ Sphere :: struct {
     rad : f32,
     position : Vec3,
     material : Material,
+    texture : ^Image,
 }
 
 Quad :: struct {
     position : Vec3,
     size : Vec2,
     material : Material,
+    texture : ^Image,
 }
 
 set_face_normal :: proc(p: Vec3, n: Vec3) -> (new_n: Vec3)
@@ -48,7 +50,16 @@ sphere_hit :: proc(ray: Ray, sphere: ^Sphere, t_in: Vec2) -> (hit: bool, record:
     record.p = ray.origin + t * ray.dir
     record.normal = (record.p - sphere.position) / sphere.rad
     record.normal = set_face_normal(ray.dir, record.normal)
-    record.material = sphere.material
+    record.uv = load_sphere_uv(record.normal)
+
+    color: Vec3
+    if sphere.texture != nil
+    {
+        color = load_color_from_uv(record.uv, sphere.texture)
+        record.material.color = color
+        record.material.mat_type = sphere.material.mat_type
+    }
+    else { record.material = sphere.material }
 
     return
 }
@@ -75,8 +86,17 @@ quad_xz_hit :: proc(ray: Ray, quad: ^Quad, t_in: Vec2) -> (hit: bool, record: Re
     hit = true
     record.t = t
     record.p = p
+    record.uv = load_quad_uv(Vec2{p.x, p.z}, Vec2{x_min, x_max}, Vec2{z_min, z_max})
     record.normal = set_face_normal(ray.dir, tmp_normal)
-    record.material = quad.material
+
+    color: Vec3
+    if quad.texture != nil
+    {
+        color = load_color_from_uv(record.uv, quad.texture)
+        record.material.color = color
+        record.material.mat_type = quad.material.mat_type
+    }
+    else { record.material = quad.material }
 
     return
 }

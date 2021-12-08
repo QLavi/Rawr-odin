@@ -17,6 +17,7 @@ Ray :: struct {
 Record :: struct {
     t: f32,
     p: Vec3,
+    uv: Vec2,
     normal: Vec3,
     material : Material,
 }
@@ -28,24 +29,28 @@ main :: proc()
     width  := i32(1980 * 0.7)
     height := i32(f32(width) / aspect)
 
-    max_depth: i32 = 48
-    max_samples: i32 = 512
+    max_depth: i32 = 64
+    max_samples: i32 = 256
 
     spheres := make([]Sphere, 3)
     defer delete(spheres)
 
+    checker := load_texture_from_file("data/checker.png")
+    defer stbi.image_free(checker.data)
+
     metallic_default := Metallic{0.0}
     lambert_default := Lambertian {0.5}
     emissive_default := Emissive {4}
-    spheres[0] = Sphere { 1.0, Vec3{ 0, 0.5, 0}, Material{ Vec3{0.7, 0.5, 1.0}, lambert_default} }
-    spheres[1] = Sphere { 0.5, Vec3{-1.5, 0, 0}, Material{ Vec3{0.5, 0.5, 1.0}, metallic_default} }
-    spheres[2] = Sphere { 0.5, Vec3{ 1.5, 0, 0}, Material{ Vec3{1.0, 0.5, 1.7}, metallic_default} }
+
+    spheres[0] = Sphere { 0.8, Vec3{ 0,  0.8,  0}, Material{ Vec3{0.7, 0.5, 1.0}, lambert_default}, &checker}
+    spheres[1] = Sphere { 0.5, Vec3{-1.5, 0.5, 0}, Material{ Vec3{0.5, 0.5, 1.0}, metallic_default}, nil}
+    spheres[2] = Sphere { 0.3, Vec3{1.1,0.3,-0.5}, Material{ Vec3{1.0, 0.5, 1.7}, metallic_default}, nil}
 
     quads := make([]Quad, 2)
     defer delete(quads)
 
-    quads[0] = Quad { Vec3{0, 0, 0}, Vec2{100, 100}, Material{ Vec3{0.5, 0.5, 0.5}, lambert_default }}
-    quads[1] = Quad { Vec3{0, 2, 0}, Vec2{2, 1}, Material{ Vec3{0.5, 0.5, 0.5}, emissive_default }}
+    quads[0] = Quad { Vec3{0, 0, 0}, Vec2{100, 100}, Material{ Vec3{0.5, 0.5, 0.5}, lambert_default }, nil}
+    quads[1] = Quad { Vec3{0, 2, 0}, Vec2{5, 0.7}, Material{ Vec3{0.5, 0.5, 0.5}, emissive_default }, nil}
 
     image_buf := make([]byte, width * height * bpp)
     defer delete(image_buf)
@@ -117,11 +122,11 @@ trace_ray :: proc(ray: Ray, max_depth: i32, spheres: []Sphere, quads: []Quad) ->
         switch mat in record.material.mat_type
         {
             case Lambertian: {
-                new_ray := material_lambert(record)
+                new_ray := material_lambert(&record)
                 color = record.material.color * trace_ray(new_ray, max_depth -1, spheres, quads)
             }
             case Metallic: {
-                new_ray := material_metallic(ray, record)
+                new_ray := material_metallic(ray, &record)
 
                 if linalg.dot(new_ray.dir, record.normal) > 0
                 { color = record.material.color * trace_ray(new_ray, max_depth -1, spheres, quads) }
@@ -151,6 +156,14 @@ random_in_unit_sphere :: proc() -> (p : Vec3)
         if linalg.dot(p, p) >= 1.0 { continue }
         return 
     }
+}
+
+load_texture_from_file :: proc(filename: string) -> (image: Image)
+{
+    name := strings.clone_to_cstring(filename)
+
+    image.data = stbi.load(name, &image.size[0], &image.size[1], &image.bpp, 0)
+    return
 }
 
 write_image_color :: proc(color: Vec3, image: []byte, ix: ^i32, max_samples: i32)

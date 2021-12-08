@@ -29,7 +29,7 @@ reflect :: proc(u, n: Vec3) -> Vec3
     return dir
 }
 
-material_lambert :: proc(record: Record) -> (new_ray: Ray)
+material_lambert :: proc(record: ^Record) -> (new_ray: Ray)
 {
     new_ray.origin = record.p
     new_ray.dir = record.normal + random_in_unit_sphere()
@@ -37,7 +37,7 @@ material_lambert :: proc(record: Record) -> (new_ray: Ray)
     return
 }
 
-material_metallic :: proc(ray: Ray, record: Record) -> (new_ray: Ray)
+material_metallic :: proc(ray: Ray, record: ^Record) -> (new_ray: Ray)
 {
     fuzz_factor : f32
     #partial switch mat in record.material.mat_type {
