@@ -17,14 +17,6 @@ Quad :: struct {
     texture : ^Image,
 }
 
-set_face_normal :: proc(p: Vec3, n: Vec3) -> (new_n: Vec3)
-{
-    front_face := linalg.dot(p, n) < 0
-    if front_face { return n }
-    else { return -n }
-
-}
-
 sphere_hit :: proc(ray: Ray, sphere: ^Sphere, t_in: Vec2) -> (hit: bool, record: Record)
 {
     hit = false
@@ -48,8 +40,8 @@ sphere_hit :: proc(ray: Ray, sphere: ^Sphere, t_in: Vec2) -> (hit: bool, record:
     hit = true
     record.t = t
     record.p = ray.origin + t * ray.dir
+
     record.normal = (record.p - sphere.position) / sphere.rad
-    record.normal = set_face_normal(ray.dir, record.normal)
     record.uv = load_sphere_uv(record.normal)
 
     color: Vec3
@@ -86,8 +78,8 @@ quad_xz_hit :: proc(ray: Ray, quad: ^Quad, t_in: Vec2) -> (hit: bool, record: Re
     hit = true
     record.t = t
     record.p = p
+    record.normal = tmp_normal
     record.uv = load_quad_uv(Vec2{p.x, p.z}, Vec2{x_min, x_max}, Vec2{z_min, z_max})
-    record.normal = set_face_normal(ray.dir, tmp_normal)
 
     color: Vec3
     if quad.texture != nil
