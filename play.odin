@@ -24,20 +24,20 @@ Record :: struct {
 
 main :: proc()
 {
-    aspect : f32 = 16.0 / 9.0
+    aspect : f32 = 1.0 // 16.0 / 9.0
     bpp    : i32 = 4
-    width  := i32(1980 * 0.7)
+    width  := i32(1980 * 0.5)
     height := i32(f32(width) / aspect)
 
     max_depth: i32 = 16
-    max_samples: i32 = 5
+    max_samples: i32 = 128
 
     fov := 45.0
     theta := (math.PI / 180) * fov
     half_height := f32(math.tan(theta / 2.0))
     half_width := aspect * half_height
 
-    look_from := Vec3 {0, 10, -10}
+    look_from := Vec3 {0, 0, 15}
     look_at := Vec3 {0, 0, 0}
     up := Vec3 {0, 1, 0}
 
@@ -49,7 +49,7 @@ main :: proc()
     horizontal := 2.0 * half_width * view_u
     vertical := 2.0 * half_height * view_v
 
-    spheres := make([]Sphere, 3)
+    spheres := make([]Sphere, 2)
     defer delete(spheres)
 
     checker := load_texture_from_file("data/checker.png")
@@ -57,15 +57,28 @@ main :: proc()
 
     metallic_default := Metallic{0.0}
     lambert_default := Lambertian {0.5}
-    emissive_default := Emissive {4}
+    emissive_default := Emissive {0.7}
     dielectric_default := Dielectric {1.45}
 
-    spheres[0] = Sphere { 0.8, Vec3{ 0, 0.8, 0}, Material{ Vec3{0.7, 0.5, 1.0}, lambert_default}, nil}
+    spheres[0] = Sphere { 1.0, Vec3{2.0, -4.0, 1.3}, Material{ Vec3{0.7, 0.5, 1.0}, metallic_default}, nil}
+    spheres[1] = Sphere { 1.5, Vec3{-2.0, -3.5,-0.5}, Material{ Vec3{0.7, 0.5, 1.0}, metallic_default}, nil}
 
-    quads := make([]Quad, 1)
+    quads := make([]Quad, 6)
     defer delete(quads)
 
-    quads[0] = Quad { Vec3{0, 0, 0}, Vec2{10, 10}, Material{ Vec3{0.5, 0.5, 0.5}, lambert_default }, nil}
+    // XZ bottom
+    quads[0] = Quad {Vec3{0,-5, 0}, Vec2{10, 10}, Material{ Vec3{0.73,0.73,0.73}, lambert_default }, nil}
+    // XZ top
+    quads[1] = Quad {Vec3{0, 5, 0}, Vec2{10, 10}, Material{ Vec3{0.73,0.73,0.73}, lambert_default }, nil}
+    // YZ left
+    quads[3] = Quad {Vec3{-5, 0,0}, Vec2{10, 10}, Material{ Vec3{0.12,0.45,0.15}, lambert_default }, nil}
+    // YZ right
+    quads[4] = Quad {Vec3{5, 0, 0}, Vec2{10, 10}, Material{ Vec3{0.65, 0.05, 0.05}, lambert_default }, nil}
+    // XY back
+    quads[5] = Quad {Vec3{0, 0, -5}, Vec2{10, 10}, Material{ Vec3{0.5, 0.5, 0.5}, lambert_default }, nil}
+
+    // top light
+    quads[2] = Quad {Vec3{0, 5, 0}, Vec2{3, 3}, Material{ Vec3{1, 1, 1}, emissive_default }, nil}
 
     image_buf := make([]byte, width * height * bpp)
     defer delete(image_buf)
@@ -108,8 +121,28 @@ scene_hit :: proc(ray: Ray, spheres: []Sphere, quads: []Quad) -> (hit_anything: 
         }
     }
 
-    for i in 0..< len(quads) {
+    for i in 0..< 3 {
         hit, tmp_record := quad_xz_hit(ray, &quads[i], t_in)
+
+        if hit {
+            t_in[1] = tmp_record.t
+            hit_anything = true
+            record = tmp_record
+        }
+    }
+
+    for i in 3..< 5 {
+        hit, tmp_record := quad_yz_hit(ray, &quads[i], t_in)
+
+        if hit {
+            t_in[1] = tmp_record.t
+            hit_anything = true
+            record = tmp_record
+        }
+    }
+
+    for i in 5..< 6 {
+        hit, tmp_record := quad_xy_hit(ray, &quads[i], t_in)
 
         if hit {
             t_in[1] = tmp_record.t
@@ -123,7 +156,7 @@ scene_hit :: proc(ray: Ray, spheres: []Sphere, quads: []Quad) -> (hit_anything: 
 
 trace_ray :: proc(ray: Ray, max_depth: i32, spheres: []Sphere, quads: []Quad) -> (color: Vec3)
 {
-    color = {0.5, 0.7, 1.0}
+    color = {0.0, 0.0, 0.0}
     if max_depth <= 0 { return }
 
     hit, record := scene_hit(ray, spheres, quads)
