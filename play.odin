@@ -29,8 +29,25 @@ main :: proc()
     width  := i32(1980 * 0.7)
     height := i32(f32(width) / aspect)
 
-    max_depth: i32 = 48
-    max_samples: i32 = 32
+    max_depth: i32 = 16
+    max_samples: i32 = 5
+
+    fov := 45.0
+    theta := (math.PI / 180) * fov
+    half_height := f32(math.tan(theta / 2.0))
+    half_width := aspect * half_height
+
+    look_from := Vec3 {0, 10, -10}
+    look_at := Vec3 {0, 0, 0}
+    up := Vec3 {0, 1, 0}
+
+    view_z := linalg.normalize(look_from - look_at)
+    view_u := linalg.normalize(linalg.cross(up, view_z))
+    view_v := linalg.cross(view_z, view_u)
+
+    lower_left_corner := -half_width * view_u - half_height * view_v - view_z
+    horizontal := 2.0 * half_width * view_u
+    vertical := 2.0 * half_height * view_v
 
     spheres := make([]Sphere, 3)
     defer delete(spheres)
@@ -41,17 +58,14 @@ main :: proc()
     metallic_default := Metallic{0.0}
     lambert_default := Lambertian {0.5}
     emissive_default := Emissive {4}
-    dielectric_default := Dielectric { 1.45 }
+    dielectric_default := Dielectric {1.45}
 
-    spheres[0] = Sphere { 0.8, Vec3{ 0,  0.8,  0}, Material{ Vec3{0.7, 0.5, 1.0}, dielectric_default}, nil}
-    spheres[1] = Sphere { 0.5, Vec3{-1.5, 0.5, 0}, Material{ Vec3{0.5, 0.5, 1.0}, metallic_default}, nil}
-    spheres[2] = Sphere { 0.3, Vec3{1.1,0.3,-0.5}, Material{ Vec3{1.0, 0.5, 1.7}, lambert_default}, &checker}
+    spheres[0] = Sphere { 0.8, Vec3{ 0, 0.8, 0}, Material{ Vec3{0.7, 0.5, 1.0}, lambert_default}, nil}
 
     quads := make([]Quad, 1)
     defer delete(quads)
 
-    quads[0] = Quad { Vec3{0, 0, 0}, Vec2{100, 100}, Material{ Vec3{0.5, 0.5, 0.5}, lambert_default }, nil}
-    /* quads[1] = Quad { Vec3{0, 2, 0}, Vec2{5, 0.7}, Material{ Vec3{0.5, 0.5, 0.5}, emissive_default }, nil} */
+    quads[0] = Quad { Vec3{0, 0, 0}, Vec2{10, 10}, Material{ Vec3{0.5, 0.5, 0.5}, lambert_default }, nil}
 
     image_buf := make([]byte, width * height * bpp)
     defer delete(image_buf)
@@ -67,14 +81,9 @@ main :: proc()
                 u := (f32(x) + (rand.float32_range(0, 0.98))) / f32(width -1)
                 v := (f32(y) + (rand.float32_range(0, 0.98))) / f32(height -1)
 
-                u = (u*2.0) - 1.0
-                v = (v*2.0) - 1.0
-                u = u*aspect
+                ray_dir := lower_left_corner + u * horizontal + v * vertical
+                ray := Ray { look_from, ray_dir }
 
-                ray:= Ray {
-                    Vec3{0, 1.0, -4},
-                    Vec3{u ,v, 2},
-                }
                 ray.dir = linalg.normalize(ray.dir)
                 color = color + trace_ray(ray, max_depth, spheres, quads)
             }
